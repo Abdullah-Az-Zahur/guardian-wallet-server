@@ -62,11 +62,34 @@ async function run() {
           email: user?.email,
           name: user?.name,
           phone: user?.phone,
+          role: user?.role,
           password: hashedPassword,
         },
       };
       const result = await usersCollection.updateOne(query, updateDoc, options);
       res.send(result);
+    });
+
+    // Login user
+    app.post("/login", async (req, res) => {
+      try {
+        const { email, pin } = req.body;
+        const user = await usersCollection.findOne({ email });
+        if (!user) {
+          return res.status(401).send("Invalid email or password");
+        }
+        const isMatch = await bcrypt.compare(pin, user?.password);
+        if (!isMatch) {
+          return res.status(401).send("Invalid email or password");
+        }
+        const token = jwt.sign({ id: user._id }, process.env.SECRET_KEY, {
+          expiresIn: "1h",
+        });
+        res.cookie("token", token, { httpOnly: true }).send("Logged in!");
+      } catch (err) {
+        console.error(err);
+        res.status(401).send("Authentication failed");
+      }
     });
 
     // Send a ping to confirm a successful connection
