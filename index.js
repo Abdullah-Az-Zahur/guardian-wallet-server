@@ -4,6 +4,7 @@ const cors = require("cors");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 const port = process.env.PORT || 5000;
 
@@ -41,7 +42,32 @@ async function run() {
     await client.connect();
 
     const usersCollection = client.db("GuardianWalletDB").collection("users");
-    
+
+    // User Related api
+    // save user in database
+    app.put("/user", async (req, res) => {
+      const hashedPassword = await bcrypt.hash(req.body.pin, 10);
+      const user = req.body;
+
+      const query = { email: user?.email };
+      const isExist = await usersCollection.findOne(query);
+      if (isExist) {
+        return res.send(isExist);
+      }
+
+      // save user in database for first time
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          email: user?.email,
+          name: user?.name,
+          phone: user?.phone,
+          password: hashedPassword,
+        },
+      };
+      const result = await usersCollection.updateOne(query, updateDoc, options);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
