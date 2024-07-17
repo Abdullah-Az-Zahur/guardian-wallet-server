@@ -52,6 +52,7 @@ async function run() {
       const query = { email: user?.email };
       const isExist = await usersCollection.findOne(query);
       if (isExist) {
+        // if existing user login again
         return res.send(isExist);
       }
 
@@ -68,6 +69,24 @@ async function run() {
       };
       const result = await usersCollection.updateOne(query, updateDoc, options);
       res.send(result);
+    });
+
+    //  update user in database for status update
+    app.put("/userUpdate", async (req, res) => {
+      const user = req.body;
+
+      const query = { email: user?.email };
+      // check if user already exists in db
+      const isExist = await usersCollection.findOne(query);
+      if (isExist) {
+        if (user.status === "Requested") {
+          // if existing user try to change his role
+          const result = await usersCollection.updateOne(query, {
+            $set: { status: user?.status },
+          });
+          return res.send(result);
+        } 
+      }
     });
 
     // Login user
@@ -89,6 +108,23 @@ async function run() {
       } catch (err) {
         console.error(err);
         res.status(401).send("Authentication failed");
+      }
+    });
+
+    // get single user information
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email });
+      res.send(user);
+    });
+
+    // Logout
+    app.get("/logout", (req, res) => {
+      try {
+        res.clearCookie("token").send("Logged out!");
+      } catch (err) {
+        console.error(err);
+        res.status(500).send("Failed to log out");
       }
     });
 
